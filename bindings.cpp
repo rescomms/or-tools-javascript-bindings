@@ -2,33 +2,34 @@
 #include <emscripten/bind.h>
 #include <emscripten/val.h>
 #include "ortools/sat/cp_model.h"
-#include "ortools/sat/util.h"
 #include <stdio.h>
 
 using namespace emscripten;
+using namespace operations_research;
+using namespace sat;
 
-operations_research::sat::LinearExpr sumBoolVars(const std::vector<operations_research::sat::BoolVar>& vars) {
-    return operations_research::sat::LinearExpr::Sum(vars);
+LinearExpr sumBoolVars(const std::vector<BoolVar>& vars) {
+    return LinearExpr::Sum(vars);
 }
 
-operations_research::sat::LinearExpr weightedSumBoolVars(const std::vector<operations_research::sat::BoolVar>& vars, const std::vector<int64_t>& coeffs) {
-    return operations_research::sat::LinearExpr::WeightedSum(vars, coeffs);
+LinearExpr weightedSumBoolVars(const std::vector<BoolVar>& vars, const std::vector<int64_t>& coeffs) {
+    return LinearExpr::WeightedSum(vars, coeffs);
 }
 
-operations_research::sat::LinearExpr newLinearExprBoolVar(const operations_research::sat::BoolVar& var) {
-    return operations_research::sat::LinearExpr(var);
+LinearExpr newLinearExprBoolVar(const BoolVar& var) {
+    return LinearExpr(var);
 }
 
-operations_research::sat::LinearExpr newLinearExprConstant(int64_t constant) {
-    return operations_research::sat::LinearExpr(constant);
+LinearExpr newLinearExprConstant(int64_t constant) {
+    return LinearExpr(constant);
 }
 
-int64_t solutionIntegerValue(const operations_research::sat::CpSolverResponse& response, const operations_research::sat::BoolVar& var) {
-    return operations_research::sat::SolutionIntegerValue(response, var);
+int64_t solutionIntegerValue(const CpSolverResponse& response, const BoolVar& var) {
+    return SolutionIntegerValue(response, var);
 }
 
-operations_research::sat::Model* newIntermediateSolutionModel(const val& callBack) {
-    operations_research::sat::Model *model = new operations_research::sat::Model();
+Model* newIntermediateSolutionModel(const val& callBack) {
+    Model *model = new Model();
     if (!model) {
         return nullptr;
     }
@@ -36,12 +37,12 @@ operations_research::sat::Model* newIntermediateSolutionModel(const val& callBac
         printf("Callback is not a function.\n");
         return nullptr;
     }
-    model->Add(operations_research::sat::NewFeasibleSolutionObserver(callBack));
+    model->Add(NewFeasibleSolutionObserver(callBack));
     return model;
 }
 
 EMSCRIPTEN_BINDINGS(stl) {
-    register_vector<operations_research::sat::BoolVar>("BoolVarVector");
+    register_vector<BoolVar>("BoolVarVector");
     register_vector<int64_t>("Int64Vector");
 
     function("sumBoolVars", &sumBoolVars);
@@ -52,50 +53,50 @@ EMSCRIPTEN_BINDINGS(stl) {
 }
 
 EMSCRIPTEN_BINDINGS(variables) {
-    class_<operations_research::Domain>("Domain")
+    class_<Domain>("Domain")
         .constructor<int64_t, int64_t>();
     
-    class_<operations_research::sat::BoolVar>("BoolVar")
-        .function("not", &operations_research::sat::BoolVar::Not);
+    class_<BoolVar>("BoolVar")
+        .function("not", &BoolVar::Not);
     
-    class_<operations_research::sat::IntVar>("IntVar");
+    class_<IntVar>("IntVar");
 }
 
 EMSCRIPTEN_BINDINGS(model) {
-    class_<operations_research::sat::LinearExpr>("LinearExpr")
-        .function("add", &operations_research::sat::LinearExpr::operator+=);
+    class_<LinearExpr>("LinearExpr")
+        .function("add", &LinearExpr::operator+=);
     
-    class_<operations_research::sat::Constraint>("Constraint")
-        .function("onlyEnforceIf", select_overload<operations_research::sat::Constraint(operations_research::sat::BoolVar)>(&operations_research::sat::Constraint::OnlyEnforceIf));
+    class_<Constraint>("Constraint")
+        .function("onlyEnforceIf", select_overload<Constraint(BoolVar)>(&Constraint::OnlyEnforceIf));
 
-    class_<operations_research::sat::CpModelProto>("CpModelProto");
+    class_<CpModelProto>("CpModelProto");
     
-    class_<operations_research::sat::CpModelBuilder>("CpModelBuilder")
+    class_<CpModelBuilder>("CpModelBuilder")
         .constructor<>()
-        .function("newBoolVar", &operations_research::sat::CpModelBuilder::NewBoolVar)
-        .function("newIntVar", &operations_research::sat::CpModelBuilder::NewIntVar)
-        .function("addLessOrEqual", &operations_research::sat::CpModelBuilder::AddLessOrEqual)
-        .function("addLessThan", &operations_research::sat::CpModelBuilder::AddLessThan)
-        .function("addGreaterOrEqual", &operations_research::sat::CpModelBuilder::AddGreaterOrEqual)
-        .function("addEquality", &operations_research::sat::CpModelBuilder::AddEquality)
-        .function("maximize", select_overload<void(const operations_research::sat::LinearExpr&)>(&operations_research::sat::CpModelBuilder::Maximize))
-        .function("build", &operations_research::sat::CpModelBuilder::Build);
+        .function("newBoolVar", &CpModelBuilder::NewBoolVar)
+        .function("newIntVar", &CpModelBuilder::NewIntVar)
+        .function("addLessOrEqual", &CpModelBuilder::AddLessOrEqual)
+        .function("addLessThan", &CpModelBuilder::AddLessThan)
+        .function("addGreaterOrEqual", &CpModelBuilder::AddGreaterOrEqual)
+        .function("addEquality", &CpModelBuilder::AddEquality)
+        .function("maximize", select_overload<void(const LinearExpr&)>(&CpModelBuilder::Maximize))
+        .function("build", &CpModelBuilder::Build);
 
-    enum_<operations_research::sat::CpSolverStatus>("CpSolverStatus")
-        .value("UNKNOWN", operations_research::sat::CpSolverStatus::UNKNOWN)
-        .value("MODEL_INVALID", operations_research::sat::CpSolverStatus::MODEL_INVALID)
-        .value("FEASIBLE", operations_research::sat::CpSolverStatus::FEASIBLE)
-        .value("INFEASIBLE", operations_research::sat::CpSolverStatus::INFEASIBLE)
-        .value("OPTIMAL", operations_research::sat::CpSolverStatus::OPTIMAL);
+    enum_<CpSolverStatus>("CpSolverStatus")
+        .value("UNKNOWN", CpSolverStatus::UNKNOWN)
+        .value("MODEL_INVALID", CpSolverStatus::MODEL_INVALID)
+        .value("FEASIBLE", CpSolverStatus::FEASIBLE)
+        .value("INFEASIBLE", CpSolverStatus::INFEASIBLE)
+        .value("OPTIMAL", CpSolverStatus::OPTIMAL);
 
-    class_<operations_research::sat::CpSolverResponse>("CpSolverResponse")
-        .function("status", &operations_research::sat::CpSolverResponse::status)
-        .function("objectiveValue", &operations_research::sat::CpSolverResponse::objective_value);
+    class_<CpSolverResponse>("CpSolverResponse")
+        .function("status", &CpSolverResponse::status)
+        .function("objectiveValue", &CpSolverResponse::objective_value);
     
-    class_<operations_research::sat::Model>("Model");
-    function("newIntermediateSolutionModel", &newIntermediateSolutionModel, return_value_policy::take_ownership());
+    class_<Model>("Model")
+        .constructor(&newIntermediateSolutionModel, return_value_policy::take_ownership());
 
-    function("solve", &operations_research::sat::Solve);
-    function("solveWithModel", &operations_research::sat::SolveCpModel, allow_raw_pointers());
+    function("solve", &Solve);
+    function("solveWithModel", &SolveCpModel, allow_raw_pointers());
     function("solutionIntegerValue", &solutionIntegerValue);
 }

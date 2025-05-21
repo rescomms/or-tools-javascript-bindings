@@ -107,8 +107,9 @@ interface EmbindModule {
   };
   CpSolverStatus: {UNKNOWN: CpSolverStatusValue<0>, MODEL_INVALID: CpSolverStatusValue<1>, FEASIBLE: CpSolverStatusValue<2>, INFEASIBLE: CpSolverStatusValue<3>, OPTIMAL: CpSolverStatusValue<4>};
   CpSolverResponse: {};
-  Model: {};
-  newIntermediateSolutionModel(_0: any): Model | null;
+  Model: {
+    new(_0: any): Model;
+  };
   solve(_0: CpModelProto): CpSolverResponse;
   solveWithModel(_0: CpModelProto, _1: Model | null): CpSolverResponse;
   solutionIntegerValue(_0: CpSolverResponse, _1: BoolVar): bigint;

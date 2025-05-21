@@ -49,9 +49,9 @@ WORKDIR ..
 ################################################################################
 # Build bindings
 FROM install-ortools AS bindings
-COPY . .
 RUN source ./emsdk/emsdk_env.sh && \
 npm install -g typescript
+COPY . .
 RUN source ./emsdk/emsdk_env.sh && \
 emcmake cmake -S . -B build
 RUN source ./emsdk/emsdk_env.sh && \
