@@ -1,8 +1,8 @@
-#include <vector>
 #include <emscripten/bind.h>
 #include <emscripten/val.h>
 #include "ortools/sat/cp_model.h"
 #include <stdio.h>
+#include <vector>
 
 using namespace emscripten;
 using namespace operations_research;
@@ -31,25 +31,18 @@ int64_t solutionIntegerValue(const CpSolverResponse& response, const BoolVar& va
 Model* newIntermediateSolutionModel(const val& callBack) {
     Model *model = new Model();
     if (!model) {
-        return nullptr;
+        throw "Model creation failed";
     }
     if (callBack.typeOf().as<std::string>() != "function") {
-        printf("Callback is not a function.\n");
-        return nullptr;
+        throw "Callback is not a function";
     }
     model->Add(NewFeasibleSolutionObserver(callBack));
     return model;
 }
 
-EMSCRIPTEN_BINDINGS(stl) {
+EMSCRIPTEN_BINDINGS(std) {
     register_vector<BoolVar>("BoolVarVector");
     register_vector<int64_t>("Int64Vector");
-
-    function("sumBoolVars", &sumBoolVars);
-    function("weightedSumBoolVars", &weightedSumBoolVars);
-
-    function("newLinearExprBoolVar", &newLinearExprBoolVar);
-    function("newLinearExprConstant", &newLinearExprConstant);
 }
 
 EMSCRIPTEN_BINDINGS(variables) {
@@ -60,6 +53,9 @@ EMSCRIPTEN_BINDINGS(variables) {
         .function("not", &BoolVar::Not);
     
     class_<IntVar>("IntVar");
+
+    function("sumBoolVars", &sumBoolVars);
+    function("weightedSumBoolVars", &weightedSumBoolVars);
 }
 
 EMSCRIPTEN_BINDINGS(model) {
@@ -99,4 +95,7 @@ EMSCRIPTEN_BINDINGS(model) {
     function("solve", &Solve);
     function("solveWithModel", &SolveCpModel, allow_raw_pointers());
     function("solutionIntegerValue", &solutionIntegerValue);
+
+    function("newLinearExprBoolVar", &newLinearExprBoolVar);
+    function("newLinearExprConstant", &newLinearExprConstant);
 }

@@ -98,8 +98,6 @@ interface EmbindModule {
   LinearExpr: {};
   sumBoolVars(_0: BoolVarVector): LinearExpr;
   weightedSumBoolVars(_0: BoolVarVector, _1: Int64Vector): LinearExpr;
-  newLinearExprBoolVar(_0: BoolVar): LinearExpr;
-  newLinearExprConstant(_0: bigint): LinearExpr;
   Constraint: {};
   CpModelProto: {};
   CpModelBuilder: {
@@ -113,6 +111,8 @@ interface EmbindModule {
   solve(_0: CpModelProto): CpSolverResponse;
   solveWithModel(_0: CpModelProto, _1: Model | null): CpSolverResponse;
   solutionIntegerValue(_0: CpSolverResponse, _1: BoolVar): bigint;
+  newLinearExprBoolVar(_0: BoolVar): LinearExpr;
+  newLinearExprConstant(_0: bigint): LinearExpr;
 }
 
 export type MainModule = WasmModule & typeof RuntimeExports & EmbindModule;
