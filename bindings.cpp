@@ -20,12 +20,24 @@ LinearExpr newLinearExprBoolVar(const BoolVar& var) {
     return LinearExpr(var);
 }
 
+LinearExpr newLinearExprIntVar(const IntVar& var) {
+    return LinearExpr(var);
+}
+
 LinearExpr newLinearExprConstant(int64_t constant) {
     return LinearExpr(constant);
 }
 
-int64_t solutionIntegerValue(const CpSolverResponse& response, const BoolVar& var) {
+int64_t solutionIntegerValueBoolVar(const CpSolverResponse& response, const BoolVar& var) {
     return SolutionIntegerValue(response, var);
+}
+
+int64_t solutionIntegerValueIntVar(const CpSolverResponse& response, const IntVar& var) {
+    return SolutionIntegerValue(response, var);
+}
+
+Constraint addAllDifferent(CpModelBuilder* builder, const std::vector<IntVar>& vars) {
+    return builder->AddAllDifferent(vars);
 }
 
 Model* newIntermediateSolutionModel(const val& callBack) {
@@ -42,6 +54,7 @@ Model* newIntermediateSolutionModel(const val& callBack) {
 
 EMSCRIPTEN_BINDINGS(std) {
     register_vector<BoolVar>("BoolVarVector");
+    register_vector<IntVar>("IntVarVector");
     register_vector<int64_t>("Int64Vector");
 }
 
@@ -75,6 +88,7 @@ EMSCRIPTEN_BINDINGS(model) {
         .function("addLessThan", &CpModelBuilder::AddLessThan)
         .function("addGreaterOrEqual", &CpModelBuilder::AddGreaterOrEqual)
         .function("addEquality", &CpModelBuilder::AddEquality)
+        .function("addAllDifferent", &addAllDifferent, allow_raw_pointers())
         .function("maximize", select_overload<void(const LinearExpr&)>(&CpModelBuilder::Maximize))
         .function("build", &CpModelBuilder::Build);
 
@@ -94,8 +108,10 @@ EMSCRIPTEN_BINDINGS(model) {
 
     function("solve", &Solve);
     function("solveWithModel", &SolveCpModel, allow_raw_pointers());
-    function("solutionIntegerValue", &solutionIntegerValue);
+    function("solutionIntegerValueBoolVar", &solutionIntegerValueBoolVar);
+    function("solutionIntegerValueIntVar", &solutionIntegerValueIntVar);
 
     function("newLinearExprBoolVar", &newLinearExprBoolVar);
+    function("newLinearExprIntVar", &newLinearExprIntVar);
     function("newLinearExprConstant", &newLinearExprConstant);
 }

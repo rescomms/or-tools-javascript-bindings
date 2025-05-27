@@ -30,6 +30,14 @@ export interface BoolVarVector extends ClassHandle {
   set(_0: number, _1: BoolVar): boolean;
 }
 
+export interface IntVarVector extends ClassHandle {
+  size(): number;
+  get(_0: number): IntVar | undefined;
+  push_back(_0: IntVar): void;
+  resize(_0: number, _1: IntVar): void;
+  set(_0: number, _1: IntVar): boolean;
+}
+
 export interface Int64Vector extends ClassHandle {
   push_back(_0: bigint): void;
   resize(_0: number, _1: bigint): void;
@@ -66,6 +74,7 @@ export interface CpModelBuilder extends ClassHandle {
   addLessThan(_0: LinearExpr, _1: LinearExpr): Constraint;
   addGreaterOrEqual(_0: LinearExpr, _1: LinearExpr): Constraint;
   addEquality(_0: LinearExpr, _1: LinearExpr): Constraint;
+  addAllDifferent(_0: IntVarVector): Constraint;
   maximize(_0: LinearExpr): void;
   build(): CpModelProto;
 }
@@ -86,6 +95,9 @@ export interface Model extends ClassHandle {
 interface EmbindModule {
   BoolVarVector: {
     new(): BoolVarVector;
+  };
+  IntVarVector: {
+    new(): IntVarVector;
   };
   Int64Vector: {
     new(): Int64Vector;
@@ -110,8 +122,10 @@ interface EmbindModule {
   };
   solve(_0: CpModelProto): CpSolverResponse;
   solveWithModel(_0: CpModelProto, _1: Model | null): CpSolverResponse;
-  solutionIntegerValue(_0: CpSolverResponse, _1: BoolVar): bigint;
+  solutionIntegerValueBoolVar(_0: CpSolverResponse, _1: BoolVar): bigint;
+  solutionIntegerValueIntVar(_0: CpSolverResponse, _1: IntVar): bigint;
   newLinearExprBoolVar(_0: BoolVar): LinearExpr;
+  newLinearExprIntVar(_0: IntVar): LinearExpr;
   newLinearExprConstant(_0: bigint): LinearExpr;
 }
 
