@@ -40,6 +40,14 @@ Constraint addAllDifferent(CpModelBuilder* builder, const std::vector<IntVar>& v
     return builder->AddAllDifferent(vars);
 }
 
+Constraint addBoolAnd(CpModelBuilder* builder, const std::vector<BoolVar>& literals) {
+    return builder->AddBoolAnd(literals);
+}
+
+Constraint addBoolOr(CpModelBuilder* builder, const std::vector<BoolVar>& literals) {
+    return builder->AddBoolOr(literals);
+}
+
 Model* newIntermediateSolutionModel(const val& callBack) {
     Model *model = new Model();
     if (!model) {
@@ -89,6 +97,8 @@ EMSCRIPTEN_BINDINGS(model) {
         .function("addGreaterOrEqual", &CpModelBuilder::AddGreaterOrEqual)
         .function("addEquality", &CpModelBuilder::AddEquality)
         .function("addAllDifferent", &addAllDifferent, allow_raw_pointers())
+        .function("addBoolAnd", &addBoolAnd, allow_raw_pointers())
+        .function("addBoolOr", &addBoolOr, allow_raw_pointers())
         .function("maximize", select_overload<void(const LinearExpr&)>(&CpModelBuilder::Maximize))
         .function("build", &CpModelBuilder::Build);
 
