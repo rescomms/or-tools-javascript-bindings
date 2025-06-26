@@ -75,6 +75,8 @@ export interface CpModelBuilder extends ClassHandle {
   addGreaterOrEqual(_0: LinearExpr, _1: LinearExpr): Constraint;
   addEquality(_0: LinearExpr, _1: LinearExpr): Constraint;
   addAllDifferent(_0: IntVarVector): Constraint;
+  addBoolAnd(_0: BoolVarVector): Constraint;
+  addBoolOr(_0: BoolVarVector): Constraint;
   maximize(_0: LinearExpr): void;
   build(): CpModelProto;
 }
