@@ -99,6 +99,9 @@ EMSCRIPTEN_BINDINGS(model) {
         .function("addAllDifferent", &addAllDifferent, allow_raw_pointers())
         .function("addBoolAnd", &addBoolAnd, allow_raw_pointers())
         .function("addBoolOr", &addBoolOr, allow_raw_pointers())
+        .function("addBoolVarHint", select_overload<void(BoolVar, bool)>(&CpModelBuilder::AddHint))
+        .function("addIntVarHint", select_overload<void(IntVar, int64_t)>(&CpModelBuilder::AddHint))
+        .function("clearHints", &CpModelBuilder::ClearHints)
         .function("maximize", select_overload<void(const LinearExpr&)>(&CpModelBuilder::Maximize))
         .function("build", &CpModelBuilder::Build);
 

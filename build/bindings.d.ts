@@ -77,6 +77,9 @@ export interface CpModelBuilder extends ClassHandle {
   addAllDifferent(_0: IntVarVector): Constraint;
   addBoolAnd(_0: BoolVarVector): Constraint;
   addBoolOr(_0: BoolVarVector): Constraint;
+  addBoolVarHint(_0: BoolVar, _1: boolean): void;
+  addIntVarHint(_0: IntVar, _1: bigint): void;
+  clearHints(): void;
   maximize(_0: LinearExpr): void;
   build(): CpModelProto;
 }

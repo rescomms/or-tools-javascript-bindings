@@ -11,6 +11,8 @@ docker build -t bindings .
 docker run -v ./build:/wrkdir/result --rm bindings
 ```
 
+First build will take a long time, but subsequent builds are fast thanks to Docker cache. 
+
 ## Development
 For info on OR-Tools visit their [site](https://developers.google.com/optimization) or [source code](https://github.com/google/or-tools). 
 
