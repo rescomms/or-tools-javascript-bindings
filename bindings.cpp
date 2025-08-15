@@ -48,7 +48,7 @@ Constraint addBoolOr(CpModelBuilder* builder, const std::vector<BoolVar>& litera
     return builder->AddBoolOr(literals);
 }
 
-Model* newIntermediateSolutionModel(const val& callBack) {
+Model* newIntermediateSolutionModel(const val& callBack, bool enableLogging) {
     Model *model = new Model();
     if (!model) {
         throw "Model creation failed";
@@ -56,6 +56,11 @@ Model* newIntermediateSolutionModel(const val& callBack) {
     if (callBack.typeOf().as<std::string>() != "function") {
         throw "Callback is not a function";
     }
+    SatParameters params;
+    params.set_log_search_progress(enableLogging);
+    std::cout << params.log_search_progress() << std::endl;
+    std::cout << params.log_to_stdout() << std::endl;
+    model->Add(NewSatParameters(params));
     model->Add(NewFeasibleSolutionObserver(callBack));
     return model;
 }
