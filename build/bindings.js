@@ -1177,6 +1177,11 @@ var PThread = {
     }
   },
   initMainThread() {
+    var pthreadPoolSize = navigator.hardwareConcurrency;
+    // Start loading up the Worker pool, if requested.
+    while (pthreadPoolSize--) {
+      PThread.allocateUnusedWorker();
+    }
     // MINIMAL_RUNTIME takes care of calling loadWasmModuleToAllWorkers
     // in postamble_minimal.js
     addOnPreRun(() => {
@@ -1294,7 +1299,12 @@ var PThread = {
     });
   }),
   loadWasmModuleToAllWorkers(onMaybeReady) {
-    onMaybeReady();
+    // Instantiation is synchronous in pthreads.
+    if (ENVIRONMENT_IS_PTHREAD) {
+      return onMaybeReady();
+    }
+    let pthreadPoolReady = Promise.all(PThread.unusedWorkers.map(PThread.loadWasmModuleToWorker));
+    pthreadPoolReady.then(onMaybeReady);
   },
   allocateUnusedWorker() {
     var worker;
@@ -1318,9 +1328,8 @@ var PThread = {
       // PTHREAD_POOL_SIZE_STRICT should show a warning and, if set to level `2`, return from the function.
       // However, if we're in Node.js, then we can create new workers on the fly and PTHREAD_POOL_SIZE_STRICT
       // should be ignored altogether.
-      err("Tried to spawn a new thread, but the thread pool is exhausted.\n" + "This might result in a deadlock unless some threads eventually exit or the code explicitly breaks out to the event loop.\n" + "If you want to increase the pool size, use setting `-sPTHREAD_POOL_SIZE=...`." + "\nIf you want to throw an explicit error instead of the risk of deadlocking in those cases, use setting `-sPTHREAD_POOL_SIZE_STRICT=2`.");
-      PThread.allocateUnusedWorker();
-      PThread.loadWasmModuleToWorker(PThread.unusedWorkers[0]);
+      err("Tried to spawn a new thread, but the thread pool is exhausted.\n" + "This might result in a deadlock unless some threads eventually exit or the code explicitly breaks out to the event loop.\n" + "If you want to increase the pool size, use setting `-sPTHREAD_POOL_SIZE=...`.");
+      return;
     }
     return PThread.unusedWorkers.pop();
   }
