@@ -13,6 +13,7 @@ declare namespace RuntimeExports {
     let HEAPU64: any;
 }
 interface WasmModule {
+  _main(_0: number, _1: number): number;
 }
 
 export interface ClassHandle {

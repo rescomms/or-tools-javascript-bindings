@@ -1,5 +1,7 @@
 #include <emscripten/bind.h>
 #include <emscripten/val.h>
+#include <emscripten/threading.h>
+#include <emscripten/proxying.h>
 #include "ortools/sat/cp_model.h"
 #include <stdio.h>
 #include <vector>
@@ -48,21 +50,50 @@ Constraint addBoolOr(CpModelBuilder* builder, const std::vector<BoolVar>& litera
     return builder->AddBoolOr(literals);
 }
 
-Model* newIntermediateSolutionModel(const val& callBack, bool enableLogging) {
+static ProxyingQueue queue;
+
+Model* newIntermediateSolutionModel(const val& callback, bool enableLogging) {
     Model *model = new Model();
     if (!model) {
         throw "Model creation failed";
     }
-    if (callBack.typeOf().as<std::string>() != "function") {
+    if (callback.typeOf().as<std::string>() != "function") {
         throw "Callback is not a function";
     }
+
+    auto runCallbackInMainThread = [&](const CpSolverResponse response){
+        std::cout << "Running callback" << std::endl;
+        if (!emscripten_is_main_runtime_thread()) {
+            std::cout << "Not main thread" << std::endl;
+            bool proxied = queue.proxySync(emscripten_main_runtime_thread_id(), [&](){
+                std::cout << "Main thread activated" << std::endl;
+                callback(response);
+            });
+            assert(proxied);
+            return;
+        }
+        std::cout << "Main thread" << std::endl;
+        callback(response);
+    };
+
     SatParameters params;
     params.set_log_search_progress(enableLogging);
     std::cout << params.log_search_progress() << std::endl;
     std::cout << params.log_to_stdout() << std::endl;
     model->Add(NewSatParameters(params));
-    model->Add(NewFeasibleSolutionObserver(callBack));
+    model->Add(NewFeasibleSolutionObserver(runCallbackInMainThread));
     return model;
+}
+
+struct SolveArgs {
+    const CpModelProto& model_proto;
+    Model* model;
+}
+
+void* solveWithModel(void* arg) {
+    auto args = (struct SolveArgs*)arg;
+    CpSolverResponse result = SolveCpModel(args->model_proto, args->model);
+    return result;
 }
 
 EMSCRIPTEN_BINDINGS(std) {
