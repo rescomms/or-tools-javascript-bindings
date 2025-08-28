@@ -1,10 +1,13 @@
-#include <emscripten/bind.h>
+#include <emscripten/emscripten.h>
 #include <emscripten/val.h>
+#include <emscripten/bind.h>
 #include <emscripten/threading.h>
 #include <emscripten/proxying.h>
 #include "ortools/sat/cp_model.h"
 #include <stdio.h>
 #include <vector>
+#include <future>
+#include <utility>
 
 using namespace emscripten;
 using namespace operations_research;
@@ -52,6 +55,7 @@ Constraint addBoolOr(CpModelBuilder* builder, const std::vector<BoolVar>& litera
 
 static ProxyingQueue queue;
 
+// Creates a model that allows running a callback for each intermediate solution found. The callback must be syncronous
 Model* newIntermediateSolutionModel(const val& callback, bool enableLogging) {
     Model *model = new Model();
     if (!model) {
@@ -61,39 +65,32 @@ Model* newIntermediateSolutionModel(const val& callback, bool enableLogging) {
         throw "Callback is not a function";
     }
 
-    auto runCallbackInMainThread = [&](const CpSolverResponse response){
-        std::cout << "Running callback" << std::endl;
+    auto runCallbackInMainThread = [callback=std::move(callback)](const CpSolverResponse response){
         if (!emscripten_is_main_runtime_thread()) {
-            std::cout << "Not main thread" << std::endl;
-            bool proxied = queue.proxySync(emscripten_main_runtime_thread_id(), [&](){
-                std::cout << "Main thread activated" << std::endl;
+            bool proxied = queue.proxySync(emscripten_main_runtime_thread_id(), [&callback, &response](){
                 callback(response);
             });
             assert(proxied);
             return;
         }
-        std::cout << "Main thread" << std::endl;
         callback(response);
     };
 
     SatParameters params;
     params.set_log_search_progress(enableLogging);
-    std::cout << params.log_search_progress() << std::endl;
-    std::cout << params.log_to_stdout() << std::endl;
     model->Add(NewSatParameters(params));
     model->Add(NewFeasibleSolutionObserver(runCallbackInMainThread));
     return model;
 }
 
-struct SolveArgs {
-    const CpModelProto& model_proto;
-    Model* model;
-}
-
-void* solveWithModel(void* arg) {
-    auto args = (struct SolveArgs*)arg;
-    CpSolverResponse result = SolveCpModel(args->model_proto, args->model);
-    return result;
+CpSolverResponse solveWithModel(const CpModelProto& model_proto, Model* model) {
+    // Run the solver in a new thread so that the main thread is free to execute callbacks
+    std::future<CpSolverResponse> f = std::async(std::launch::async, &SolveCpModel, model_proto, model);
+    // Keep executing callbacks until the solver has finished
+    do {
+        queue.execute();
+    } while(f.wait_for(std::chrono::milliseconds(200)) != std::future_status::ready);
+    return f.get();
 }
 
 EMSCRIPTEN_BINDINGS(std) {
@@ -156,7 +153,7 @@ EMSCRIPTEN_BINDINGS(model) {
         .constructor(&newIntermediateSolutionModel, return_value_policy::take_ownership());
 
     function("solve", &Solve);
-    function("solveWithModel", &SolveCpModel, allow_raw_pointers());
+    function("solveWithModel", &solveWithModel, allow_raw_pointers());
     function("solutionIntegerValueBoolVar", &solutionIntegerValueBoolVar);
     function("solutionIntegerValueIntVar", &solutionIntegerValueIntVar);
 
