@@ -37,7 +37,7 @@ RUN source ../emsdk/emsdk_env.sh && \
 emcmake cmake -S. -Bbuild -DBUILD_DEPS:BOOL=ON -DBUILD_TESTING=OFF \
 -DBUILD_FLATZINC:BOOL=OFF \
 -DBUILD_EXAMPLES:BOOL=OFF -DUSE_COINOR:BOOL=OFF -DUSE_HIGHS:BOOL=OFF \
--DUSE_SCIP:BOOL=OFF
+-DUSE_SCIP:BOOL=OFF -DCMAKE_C_FLAGS="-pthread" -DCMAKE_CXX_FLAGS="-pthread"
 RUN cmake --build build
 
 ################################################################################
