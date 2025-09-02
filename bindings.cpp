@@ -41,6 +41,10 @@ int64_t solutionIntegerValueIntVar(const CpSolverResponse& response, const IntVa
     return SolutionIntegerValue(response, var);
 }
 
+int64_t solutionIntegerValueLinearExpr(const CpSolverResponse& response, const LinearExpr& expr) {
+    return SolutionIntegerValue(response, expr);
+}
+
 Constraint addAllDifferent(CpModelBuilder* builder, const std::vector<IntVar>& vars) {
     return builder->AddAllDifferent(vars);
 }
@@ -55,31 +59,44 @@ Constraint addBoolOr(CpModelBuilder* builder, const std::vector<BoolVar>& litera
 
 static ProxyingQueue queue;
 
-// Creates a model that allows running a callback for each intermediate solution found. The callback must be syncronous
-Model* newIntermediateSolutionModel(const val& callback, bool enableLogging) {
-    Model *model = new Model();
-    if (!model) {
-        throw "Model creation failed";
-    }
-    if (callback.typeOf().as<std::string>() != "function") {
-        throw "Callback is not a function";
-    }
-
-    auto runCallbackInMainThread = [callback=std::move(callback)](const CpSolverResponse response){
+template <typename T>
+auto mainThreadifyCallback(const val& callback) {
+    return [callback=std::move(callback)](const T arg) {
         if (!emscripten_is_main_runtime_thread()) {
-            bool proxied = queue.proxySync(emscripten_main_runtime_thread_id(), [&callback, &response](){
-                callback(response);
+            bool proxied = queue.proxySync(emscripten_main_runtime_thread_id(), [&callback, &arg](){
+                callback(arg);
             });
             assert(proxied);
             return;
         }
-        callback(response);
+        callback(arg);
     };
+}
+
+EMSCRIPTEN_DECLARE_VAL_TYPE(SolutionCallback);
+EMSCRIPTEN_DECLARE_VAL_TYPE(BoundCallback);
+
+// Creates a model that allows running a callback for each intermediate solution and best objective bound found. The callbacks must be syncronous
+Model* newIntermediateSolutionModel(const SolutionCallback& solutionCallback, const BoundCallback& boundCallback, bool enableLogging) {
+    Model *model = new Model();
+    if (!model) {
+        throw "Model creation failed";
+    }
+    if (solutionCallback.typeOf().as<std::string>() != "function") {
+        throw "Solution callback is not a function";
+    }
+    if (boundCallback.typeOf().as<std::string>() != "function") {
+        throw "Bound callback is not a function";
+    }
+
+    auto runSolutionCallbackInMainThread = mainThreadifyCallback<CpSolverResponse>(solutionCallback);
+    auto runBoundCallbackInMainThread = mainThreadifyCallback<double>(boundCallback);
 
     SatParameters params;
     params.set_log_search_progress(enableLogging);
     model->Add(NewSatParameters(params));
-    model->Add(NewFeasibleSolutionObserver(runCallbackInMainThread));
+    model->Add(NewFeasibleSolutionObserver(runSolutionCallbackInMainThread));
+    model->Add(NewBestBoundCallback(runBoundCallbackInMainThread));
     return model;
 }
 
@@ -152,10 +169,14 @@ EMSCRIPTEN_BINDINGS(model) {
     class_<Model>("Model")
         .constructor(&newIntermediateSolutionModel, return_value_policy::take_ownership());
 
+    register_type<SolutionCallback>("(response: CpSolverResponse) => void");
+    register_type<BoundCallback>("(bound: number) => void");
+
     function("solve", &Solve);
     function("solveWithModel", &solveWithModel, allow_raw_pointers());
     function("solutionIntegerValueBoolVar", &solutionIntegerValueBoolVar);
     function("solutionIntegerValueIntVar", &solutionIntegerValueIntVar);
+    function("solutionIntegerValueLinearExpr", &solutionIntegerValueLinearExpr);
 
     function("newLinearExprBoolVar", &newLinearExprBoolVar);
     function("newLinearExprIntVar", &newLinearExprIntVar);
