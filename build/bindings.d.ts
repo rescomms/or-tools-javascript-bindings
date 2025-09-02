@@ -123,12 +123,13 @@ interface EmbindModule {
   CpSolverStatus: {UNKNOWN: CpSolverStatusValue<0>, MODEL_INVALID: CpSolverStatusValue<1>, FEASIBLE: CpSolverStatusValue<2>, INFEASIBLE: CpSolverStatusValue<3>, OPTIMAL: CpSolverStatusValue<4>};
   CpSolverResponse: {};
   Model: {
-    new(_0: any, _1: boolean): Model;
+    new(_0: (response: CpSolverResponse) => void, _1: (bound: number) => void, _2: boolean): Model;
   };
   solve(_0: CpModelProto): CpSolverResponse;
   solveWithModel(_0: CpModelProto, _1: Model | null): CpSolverResponse;
   solutionIntegerValueBoolVar(_0: CpSolverResponse, _1: BoolVar): bigint;
   solutionIntegerValueIntVar(_0: CpSolverResponse, _1: IntVar): bigint;
+  solutionIntegerValueLinearExpr(_0: CpSolverResponse, _1: LinearExpr): bigint;
   newLinearExprBoolVar(_0: BoolVar): LinearExpr;
   newLinearExprIntVar(_0: IntVar): LinearExpr;
   newLinearExprConstant(_0: bigint): LinearExpr;
