@@ -22,7 +22,7 @@ RUN apt-get update && \
 # Install emscripten
 FROM base AS emscripten
 WORKDIR /wrkdir
-RUN git clone --depth 1 --branch 4.0.5 https://github.com/emscripten-core/emsdk.git
+RUN git clone --depth 1 --branch 5.0.3 https://github.com/emscripten-core/emsdk.git
 WORKDIR emsdk
 RUN ./emsdk install latest
 RUN ./emsdk activate latest
@@ -37,7 +37,7 @@ RUN source ../emsdk/emsdk_env.sh && \
 emcmake cmake -S. -Bbuild -DBUILD_DEPS:BOOL=ON -DBUILD_TESTING=OFF \
 -DBUILD_FLATZINC:BOOL=OFF \
 -DBUILD_EXAMPLES:BOOL=OFF -DUSE_COINOR:BOOL=OFF -DUSE_HIGHS:BOOL=OFF \
--DUSE_SCIP:BOOL=OFF -DCMAKE_C_FLAGS="-pthread" -DCMAKE_CXX_FLAGS="-pthread"
+-DUSE_SCIP:BOOL=OFF -DCMAKE_C_FLAGS="-pthread -sMEMORY64=1 -D_MIPS_SZPTR=64" -DCMAKE_CXX_FLAGS="-pthread -sMEMORY64=1 -D_MIPS_SZPTR=64"
 RUN cmake --build build
 
 ################################################################################
@@ -53,7 +53,7 @@ RUN source ./emsdk/emsdk_env.sh && \
 npm install -g typescript
 COPY . .
 RUN source ./emsdk/emsdk_env.sh && \
-emcmake cmake -S . -B build
+emcmake cmake -S . -B build -DCMAKE_C_FLAGS="-sMEMORY64=1 -D_MIPS_SZPTR=64" -DCMAKE_CXX_FLAGS="-sMEMORY64=1 -D_MIPS_SZPTR=64" -Dortools_DIR=/wrkdir/emsdk/upstream/emscripten/cache/sysroot/lib/cmake/ortools
 RUN source ./emsdk/emsdk_env.sh && \
 cmake --build build
 
