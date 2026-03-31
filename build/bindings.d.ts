@@ -1,17 +1,4 @@
 // TypeScript bindings for emscripten-generated code.  Automatically generated at compile time.
-declare namespace RuntimeExports {
-    let HEAPF32: any;
-    let HEAPF64: any;
-    let HEAP_DATA_VIEW: any;
-    let HEAP8: any;
-    let HEAPU8: any;
-    let HEAP16: any;
-    let HEAPU16: any;
-    let HEAP32: any;
-    let HEAPU32: any;
-    let HEAP64: any;
-    let HEAPU64: any;
-}
 interface WasmModule {
 }
 
@@ -20,9 +7,11 @@ export interface ClassHandle {
   delete(): void;
   deleteLater(): this;
   isDeleted(): boolean;
+  // @ts-ignore - If targeting lower than ESNext, this symbol might not exist.
+  [Symbol.dispose](): void;
   clone(): this;
 }
-export interface BoolVarVector extends ClassHandle {
+export interface BoolVarVector extends ClassHandle, Iterable<BoolVar> {
   size(): number;
   get(_0: number): BoolVar | undefined;
   push_back(_0: BoolVar): void;
@@ -30,7 +19,7 @@ export interface BoolVarVector extends ClassHandle {
   set(_0: number, _1: BoolVar): boolean;
 }
 
-export interface IntVarVector extends ClassHandle {
+export interface IntVarVector extends ClassHandle, Iterable<IntVar> {
   size(): number;
   get(_0: number): IntVar | undefined;
   push_back(_0: IntVar): void;
@@ -38,7 +27,7 @@ export interface IntVarVector extends ClassHandle {
   set(_0: number, _1: IntVar): boolean;
 }
 
-export interface Int64Vector extends ClassHandle {
+export interface Int64Vector extends ClassHandle, Iterable<bigint> {
   push_back(_0: bigint): void;
   resize(_0: number, _1: bigint): void;
   size(): number;
@@ -135,5 +124,5 @@ interface EmbindModule {
   newLinearExprConstant(_0: bigint): LinearExpr;
 }
 
-export type MainModule = WasmModule & typeof RuntimeExports & EmbindModule;
+export type MainModule = WasmModule & EmbindModule;
 export default function MainModuleFactory (options?: unknown): Promise<MainModule>;

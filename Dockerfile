@@ -22,7 +22,7 @@ RUN apt-get update && \
 # Install emscripten
 FROM base AS emscripten
 WORKDIR /wrkdir
-RUN git clone --depth 1 --branch 4.0.5 https://github.com/emscripten-core/emsdk.git
+RUN git clone --depth 1 --branch 5.0.3 https://github.com/emscripten-core/emsdk.git
 WORKDIR emsdk
 RUN ./emsdk install latest
 RUN ./emsdk activate latest
