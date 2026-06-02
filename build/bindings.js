@@ -100,7 +100,7 @@ var quit_ = (status, toThrow) => {
   throw toThrow;
 };
 
-var _scriptName = undefined;
+var _scriptName = import.meta.url;
 
 // `/` should be present at the end if `scriptDirectory` is not empty
 var scriptDirectory = "";
@@ -1128,7 +1128,7 @@ var PThread = {
     // the first case in their bundling step. The latter ends up producing an invalid
     // URL to import from the server (e.g., for webpack the file:// path).
     // See https://github.com/webpack/webpack/issues/12638
-    worker = new Worker(`/lib/or-tools/bindings-${process.env.BUNDLE_HASH}.js`, {
+    worker = new Worker(new URL("bindings.js", import.meta.url), {
       "type": "module",
       // This is the way that we signal to the Web Worker that it is hosting
       // a pthread.
