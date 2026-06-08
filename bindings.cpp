@@ -35,6 +35,13 @@ LinearExpr newLinearExprConstant(int64_t constant) {
     return LinearExpr(constant);
 }
 
+LinearExpr immutableAdd(const LinearExpr& first, const LinearExpr& second) {
+    LinearExpr result;
+    result += first;
+    result += second;
+    return result;
+}
+
 int64_t solutionIntegerValueBoolVar(const CpSolverResponse& response, const BoolVar& var) {
     return SolutionIntegerValue(response, var);
 }
@@ -151,7 +158,8 @@ EMSCRIPTEN_BINDINGS(variables) {
 
 EMSCRIPTEN_BINDINGS(model) {
     class_<LinearExpr>("LinearExpr")
-        .function("add", &LinearExpr::operator+=);
+        .function("mutableAdd", &LinearExpr::operator+=)
+        .function("immutableAdd", &immutableAdd);
     
     class_<Constraint>("Constraint")
         .function("onlyEnforceIf", select_overload<Constraint(BoolVar)>(&Constraint::OnlyEnforceIf))

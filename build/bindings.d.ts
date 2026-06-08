@@ -46,7 +46,8 @@ export interface IntVar extends ClassHandle {
 }
 
 export interface LinearExpr extends ClassHandle {
-  add(_0: LinearExpr): LinearExpr;
+  mutableAdd(_0: LinearExpr): LinearExpr;
+  immutableAdd(_0: LinearExpr): LinearExpr;
 }
 
 export interface Constraint extends ClassHandle {
