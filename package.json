@@ -1,0 +1,28 @@
+{
+  "name": "or-tools-wasm",
+  "version": "0.0.1",
+  "description": "WASM bindings for Google OR-Tools built with Emscripten",
+  "keywords": [
+    "or-tools",
+    "wasm",
+    "emscripten",
+    "js",
+    "esmodule"
+  ],
+  "homepage": "https://github.com/rescomms/or-tools-javascript-bindings#readme",
+  "bugs": {
+    "url": "https://github.com/rescomms/or-tools-javascript-bindings/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rescomms/or-tools-javascript-bindings.git"
+  },
+  "license": "ISC",
+  "author": "",
+  "type": "module",
+  "main": "./build/bindings.js",
+  "types": "./build/bindings.d.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}
