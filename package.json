@@ -22,6 +22,10 @@
   "type": "module",
   "main": "./build/bindings.js",
   "types": "./build/bindings.d.ts",
+  "files": [
+    "./build/*.js",
+    "./build/*.d.ts"
+  ],
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   }
