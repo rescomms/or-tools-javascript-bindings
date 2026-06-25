@@ -1,10 +1,12 @@
 #include <emscripten/emscripten.h>
+#include <emscripten/heap.h>
 #include <emscripten/val.h>
 #include <emscripten/bind.h>
 #include <emscripten/threading.h>
 #include <emscripten/proxying.h>
 #include "ortools/sat/cp_model.h"
 #include <stdio.h>
+#include <malloc.h>
 #include <vector>
 #include <future>
 #include <utility>
@@ -33,12 +35,23 @@ LinearExpr newLinearExprConstant(int64_t constant) {
     return LinearExpr(constant);
 }
 
+LinearExpr immutableAdd(const LinearExpr& first, const LinearExpr& second) {
+    LinearExpr result;
+    result += first;
+    result += second;
+    return result;
+}
+
 int64_t solutionIntegerValueBoolVar(const CpSolverResponse& response, const BoolVar& var) {
     return SolutionIntegerValue(response, var);
 }
 
 int64_t solutionIntegerValueIntVar(const CpSolverResponse& response, const IntVar& var) {
     return SolutionIntegerValue(response, var);
+}
+
+int64_t solutionIntegerValueLinearExpr(const CpSolverResponse& response, const LinearExpr& expr) {
+    return SolutionIntegerValue(response, expr);
 }
 
 Constraint addAllDifferent(CpModelBuilder* builder, const std::vector<IntVar>& vars) {
@@ -53,33 +66,50 @@ Constraint addBoolOr(CpModelBuilder* builder, const std::vector<BoolVar>& litera
     return builder->AddBoolOr(literals);
 }
 
+Constraint onlyEnforceIfAll(Constraint& constraint, const std::vector<BoolVar>& literals) {
+    return constraint.OnlyEnforceIf(literals);
+}
+
 static ProxyingQueue queue;
 
-// Creates a model that allows running a callback for each intermediate solution found. The callback must be syncronous
-Model* newIntermediateSolutionModel(const val& callback, bool enableLogging) {
-    Model *model = new Model();
-    if (!model) {
-        throw "Model creation failed";
-    }
-    if (callback.typeOf().as<std::string>() != "function") {
-        throw "Callback is not a function";
-    }
-
-    auto runCallbackInMainThread = [callback=std::move(callback)](const CpSolverResponse response){
+template <typename T>
+auto mainThreadifyCallback(const val& callback) {
+    return [callback=std::move(callback)](const T arg) {
         if (!emscripten_is_main_runtime_thread()) {
-            bool proxied = queue.proxySync(emscripten_main_runtime_thread_id(), [&callback, &response](){
-                callback(response);
+            bool proxied = queue.proxySync(emscripten_main_runtime_thread_id(), [&callback, &arg](){
+                callback(arg);
             });
             assert(proxied);
             return;
         }
-        callback(response);
+        callback(arg);
     };
+}
+
+EMSCRIPTEN_DECLARE_VAL_TYPE(SolutionCallback);
+EMSCRIPTEN_DECLARE_VAL_TYPE(BoundCallback);
+
+// Creates a model that allows running a callback for each intermediate solution and best objective bound found. The callbacks must be syncronous
+Model* newIntermediateSolutionModel(const SolutionCallback& solutionCallback, const BoundCallback& boundCallback, bool enableLogging) {
+    Model *model = new Model();
+    if (!model) {
+        throw "Model creation failed";
+    }
+    if (solutionCallback.typeOf().as<std::string>() != "function") {
+        throw "Solution callback is not a function";
+    }
+    if (boundCallback.typeOf().as<std::string>() != "function") {
+        throw "Bound callback is not a function";
+    }
+
+    auto runSolutionCallbackInMainThread = mainThreadifyCallback<CpSolverResponse>(solutionCallback);
+    auto runBoundCallbackInMainThread = mainThreadifyCallback<double>(boundCallback);
 
     SatParameters params;
     params.set_log_search_progress(enableLogging);
     model->Add(NewSatParameters(params));
-    model->Add(NewFeasibleSolutionObserver(runCallbackInMainThread));
+    model->Add(NewFeasibleSolutionObserver(runSolutionCallbackInMainThread));
+    model->Add(NewBestBoundCallback(runBoundCallbackInMainThread));
     return model;
 }
 
@@ -91,6 +121,20 @@ CpSolverResponse solveWithModel(const CpModelProto& model_proto, Model* model) {
         queue.execute();
     } while(f.wait_for(std::chrono::milliseconds(200)) != std::future_status::ready);
     return f.get();
+}
+
+size_t getTotalMemory() {
+  return emscripten_get_heap_size();
+}
+
+size_t getFreeMemory() {
+  struct mallinfo i = mallinfo();
+  return i.fordblks;
+}
+
+size_t getUsedMemory() {
+  struct mallinfo i = mallinfo();
+  return i.uordblks;
 }
 
 EMSCRIPTEN_BINDINGS(std) {
@@ -114,11 +158,13 @@ EMSCRIPTEN_BINDINGS(variables) {
 
 EMSCRIPTEN_BINDINGS(model) {
     class_<LinearExpr>("LinearExpr")
-        .function("add", &LinearExpr::operator+=);
+        .function("mutableAdd", &LinearExpr::operator+=)
+        .function("immutableAdd", &immutableAdd);
     
     class_<Constraint>("Constraint")
-        .function("onlyEnforceIf", select_overload<Constraint(BoolVar)>(&Constraint::OnlyEnforceIf));
-
+        .function("onlyEnforceIf", select_overload<Constraint(BoolVar)>(&Constraint::OnlyEnforceIf))
+        .function("onlyEnforceIfAll", &onlyEnforceIfAll);
+        
     class_<CpModelProto>("CpModelProto");
     
     class_<CpModelBuilder>("CpModelBuilder")
@@ -128,7 +174,9 @@ EMSCRIPTEN_BINDINGS(model) {
         .function("addLessOrEqual", &CpModelBuilder::AddLessOrEqual)
         .function("addLessThan", &CpModelBuilder::AddLessThan)
         .function("addGreaterOrEqual", &CpModelBuilder::AddGreaterOrEqual)
+        .function("addGreaterThan", &CpModelBuilder::AddGreaterThan)
         .function("addEquality", &CpModelBuilder::AddEquality)
+        .function("addNotEqual", &CpModelBuilder::AddNotEqual)
         .function("addAllDifferent", &addAllDifferent, allow_raw_pointers())
         .function("addBoolAnd", &addBoolAnd, allow_raw_pointers())
         .function("addBoolOr", &addBoolOr, allow_raw_pointers())
@@ -152,12 +200,20 @@ EMSCRIPTEN_BINDINGS(model) {
     class_<Model>("Model")
         .constructor(&newIntermediateSolutionModel, return_value_policy::take_ownership());
 
+    register_type<SolutionCallback>("(response: CpSolverResponse) => void");
+    register_type<BoundCallback>("(bound: number) => void");
+
     function("solve", &Solve);
     function("solveWithModel", &solveWithModel, allow_raw_pointers());
     function("solutionIntegerValueBoolVar", &solutionIntegerValueBoolVar);
     function("solutionIntegerValueIntVar", &solutionIntegerValueIntVar);
+    function("solutionIntegerValueLinearExpr", &solutionIntegerValueLinearExpr);
 
     function("newLinearExprBoolVar", &newLinearExprBoolVar);
     function("newLinearExprIntVar", &newLinearExprIntVar);
     function("newLinearExprConstant", &newLinearExprConstant);
+
+    function("getTotalMemory", &getTotalMemory);
+    function("getFreeMemory", &getFreeMemory);
+    function("getUsedMemory", &getUsedMemory);
 }

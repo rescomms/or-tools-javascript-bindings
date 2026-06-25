@@ -1,17 +1,4 @@
 // TypeScript bindings for emscripten-generated code.  Automatically generated at compile time.
-declare namespace RuntimeExports {
-    let HEAPF32: any;
-    let HEAPF64: any;
-    let HEAP_DATA_VIEW: any;
-    let HEAP8: any;
-    let HEAPU8: any;
-    let HEAP16: any;
-    let HEAPU16: any;
-    let HEAP32: any;
-    let HEAPU32: any;
-    let HEAP64: any;
-    let HEAPU64: any;
-}
 interface WasmModule {
 }
 
@@ -20,9 +7,11 @@ export interface ClassHandle {
   delete(): void;
   deleteLater(): this;
   isDeleted(): boolean;
+  // @ts-ignore - If targeting lower than ESNext, this symbol might not exist.
+  [Symbol.dispose](): void;
   clone(): this;
 }
-export interface BoolVarVector extends ClassHandle {
+export interface BoolVarVector extends ClassHandle, Iterable<BoolVar> {
   size(): number;
   get(_0: number): BoolVar | undefined;
   push_back(_0: BoolVar): void;
@@ -30,7 +19,7 @@ export interface BoolVarVector extends ClassHandle {
   set(_0: number, _1: BoolVar): boolean;
 }
 
-export interface IntVarVector extends ClassHandle {
+export interface IntVarVector extends ClassHandle, Iterable<IntVar> {
   size(): number;
   get(_0: number): IntVar | undefined;
   push_back(_0: IntVar): void;
@@ -38,7 +27,7 @@ export interface IntVarVector extends ClassHandle {
   set(_0: number, _1: IntVar): boolean;
 }
 
-export interface Int64Vector extends ClassHandle {
+export interface Int64Vector extends ClassHandle, Iterable<bigint> {
   push_back(_0: bigint): void;
   resize(_0: number, _1: bigint): void;
   size(): number;
@@ -57,11 +46,13 @@ export interface IntVar extends ClassHandle {
 }
 
 export interface LinearExpr extends ClassHandle {
-  add(_0: LinearExpr): LinearExpr;
+  mutableAdd(_0: LinearExpr): LinearExpr;
+  immutableAdd(_0: LinearExpr): LinearExpr;
 }
 
 export interface Constraint extends ClassHandle {
   onlyEnforceIf(_0: BoolVar): Constraint;
+  onlyEnforceIfAll(_0: BoolVarVector): Constraint;
 }
 
 export interface CpModelProto extends ClassHandle {
@@ -73,7 +64,9 @@ export interface CpModelBuilder extends ClassHandle {
   addLessOrEqual(_0: LinearExpr, _1: LinearExpr): Constraint;
   addLessThan(_0: LinearExpr, _1: LinearExpr): Constraint;
   addGreaterOrEqual(_0: LinearExpr, _1: LinearExpr): Constraint;
+  addGreaterThan(_0: LinearExpr, _1: LinearExpr): Constraint;
   addEquality(_0: LinearExpr, _1: LinearExpr): Constraint;
+  addNotEqual(_0: LinearExpr, _1: LinearExpr): Constraint;
   addAllDifferent(_0: IntVarVector): Constraint;
   addBoolAnd(_0: BoolVarVector): Constraint;
   addBoolOr(_0: BoolVarVector): Constraint;
@@ -123,16 +116,20 @@ interface EmbindModule {
   CpSolverStatus: {UNKNOWN: CpSolverStatusValue<0>, MODEL_INVALID: CpSolverStatusValue<1>, FEASIBLE: CpSolverStatusValue<2>, INFEASIBLE: CpSolverStatusValue<3>, OPTIMAL: CpSolverStatusValue<4>};
   CpSolverResponse: {};
   Model: {
-    new(_0: any, _1: boolean): Model;
+    new(_0: (response: CpSolverResponse) => void, _1: (bound: number) => void, _2: boolean): Model;
   };
   solve(_0: CpModelProto): CpSolverResponse;
   solveWithModel(_0: CpModelProto, _1: Model | null): CpSolverResponse;
   solutionIntegerValueBoolVar(_0: CpSolverResponse, _1: BoolVar): bigint;
   solutionIntegerValueIntVar(_0: CpSolverResponse, _1: IntVar): bigint;
+  solutionIntegerValueLinearExpr(_0: CpSolverResponse, _1: LinearExpr): bigint;
   newLinearExprBoolVar(_0: BoolVar): LinearExpr;
   newLinearExprIntVar(_0: IntVar): LinearExpr;
   newLinearExprConstant(_0: bigint): LinearExpr;
+  getTotalMemory(): number;
+  getFreeMemory(): number;
+  getUsedMemory(): number;
 }
 
-export type MainModule = WasmModule & typeof RuntimeExports & EmbindModule;
+export type MainModule = WasmModule & EmbindModule;
 export default function MainModuleFactory (options?: unknown): Promise<MainModule>;
