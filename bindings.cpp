@@ -1,10 +1,12 @@
 #include <emscripten/emscripten.h>
+#include <emscripten/heap.h>
 #include <emscripten/val.h>
 #include <emscripten/bind.h>
 #include <emscripten/threading.h>
 #include <emscripten/proxying.h>
 #include "ortools/sat/cp_model.h"
 #include <stdio.h>
+#include <malloc.h>
 #include <vector>
 #include <future>
 #include <utility>
@@ -33,6 +35,13 @@ LinearExpr newLinearExprConstant(int64_t constant) {
     return LinearExpr(constant);
 }
 
+LinearExpr immutableAdd(const LinearExpr& first, const LinearExpr& second) {
+    LinearExpr result;
+    result += first;
+    result += second;
+    return result;
+}
+
 int64_t solutionIntegerValueBoolVar(const CpSolverResponse& response, const BoolVar& var) {
     return SolutionIntegerValue(response, var);
 }
@@ -55,6 +64,10 @@ Constraint addBoolAnd(CpModelBuilder* builder, const std::vector<BoolVar>& liter
 
 Constraint addBoolOr(CpModelBuilder* builder, const std::vector<BoolVar>& literals) {
     return builder->AddBoolOr(literals);
+}
+
+Constraint onlyEnforceIfAll(Constraint& constraint, const std::vector<BoolVar>& literals) {
+    return constraint.OnlyEnforceIf(literals);
 }
 
 static ProxyingQueue queue;
@@ -110,6 +123,20 @@ CpSolverResponse solveWithModel(const CpModelProto& model_proto, Model* model) {
     return f.get();
 }
 
+size_t getTotalMemory() {
+  return emscripten_get_heap_size();
+}
+
+size_t getFreeMemory() {
+  struct mallinfo i = mallinfo();
+  return i.fordblks;
+}
+
+size_t getUsedMemory() {
+  struct mallinfo i = mallinfo();
+  return i.uordblks;
+}
+
 EMSCRIPTEN_BINDINGS(std) {
     register_vector<BoolVar>("BoolVarVector");
     register_vector<IntVar>("IntVarVector");
@@ -131,11 +158,13 @@ EMSCRIPTEN_BINDINGS(variables) {
 
 EMSCRIPTEN_BINDINGS(model) {
     class_<LinearExpr>("LinearExpr")
-        .function("add", &LinearExpr::operator+=);
+        .function("mutableAdd", &LinearExpr::operator+=)
+        .function("immutableAdd", &immutableAdd);
     
     class_<Constraint>("Constraint")
-        .function("onlyEnforceIf", select_overload<Constraint(BoolVar)>(&Constraint::OnlyEnforceIf));
-
+        .function("onlyEnforceIf", select_overload<Constraint(BoolVar)>(&Constraint::OnlyEnforceIf))
+        .function("onlyEnforceIfAll", &onlyEnforceIfAll);
+        
     class_<CpModelProto>("CpModelProto");
     
     class_<CpModelBuilder>("CpModelBuilder")
@@ -145,7 +174,9 @@ EMSCRIPTEN_BINDINGS(model) {
         .function("addLessOrEqual", &CpModelBuilder::AddLessOrEqual)
         .function("addLessThan", &CpModelBuilder::AddLessThan)
         .function("addGreaterOrEqual", &CpModelBuilder::AddGreaterOrEqual)
+        .function("addGreaterThan", &CpModelBuilder::AddGreaterThan)
         .function("addEquality", &CpModelBuilder::AddEquality)
+        .function("addNotEqual", &CpModelBuilder::AddNotEqual)
         .function("addAllDifferent", &addAllDifferent, allow_raw_pointers())
         .function("addBoolAnd", &addBoolAnd, allow_raw_pointers())
         .function("addBoolOr", &addBoolOr, allow_raw_pointers())
@@ -181,4 +212,8 @@ EMSCRIPTEN_BINDINGS(model) {
     function("newLinearExprBoolVar", &newLinearExprBoolVar);
     function("newLinearExprIntVar", &newLinearExprIntVar);
     function("newLinearExprConstant", &newLinearExprConstant);
+
+    function("getTotalMemory", &getTotalMemory);
+    function("getFreeMemory", &getFreeMemory);
+    function("getUsedMemory", &getUsedMemory);
 }

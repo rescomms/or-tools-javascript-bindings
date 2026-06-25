@@ -46,11 +46,13 @@ export interface IntVar extends ClassHandle {
 }
 
 export interface LinearExpr extends ClassHandle {
-  add(_0: LinearExpr): LinearExpr;
+  mutableAdd(_0: LinearExpr): LinearExpr;
+  immutableAdd(_0: LinearExpr): LinearExpr;
 }
 
 export interface Constraint extends ClassHandle {
   onlyEnforceIf(_0: BoolVar): Constraint;
+  onlyEnforceIfAll(_0: BoolVarVector): Constraint;
 }
 
 export interface CpModelProto extends ClassHandle {
@@ -62,7 +64,9 @@ export interface CpModelBuilder extends ClassHandle {
   addLessOrEqual(_0: LinearExpr, _1: LinearExpr): Constraint;
   addLessThan(_0: LinearExpr, _1: LinearExpr): Constraint;
   addGreaterOrEqual(_0: LinearExpr, _1: LinearExpr): Constraint;
+  addGreaterThan(_0: LinearExpr, _1: LinearExpr): Constraint;
   addEquality(_0: LinearExpr, _1: LinearExpr): Constraint;
+  addNotEqual(_0: LinearExpr, _1: LinearExpr): Constraint;
   addAllDifferent(_0: IntVarVector): Constraint;
   addBoolAnd(_0: BoolVarVector): Constraint;
   addBoolOr(_0: BoolVarVector): Constraint;
@@ -122,6 +126,9 @@ interface EmbindModule {
   newLinearExprBoolVar(_0: BoolVar): LinearExpr;
   newLinearExprIntVar(_0: IntVar): LinearExpr;
   newLinearExprConstant(_0: bigint): LinearExpr;
+  getTotalMemory(): number;
+  getFreeMemory(): number;
+  getUsedMemory(): number;
 }
 
 export type MainModule = WasmModule & EmbindModule;
