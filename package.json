@@ -18,7 +18,8 @@
     "url": "git+https://github.com/rescomms/or-tools-javascript-bindings.git"
   },
   "license": "MIT",
-  "author": "",
+  "author": "Niilo Lappi <niilo.lappi@rescomms.com>",
+  "contributors": ["Leevi Rönkkö <leevi.ronkko@rescomms.com>"],
   "type": "module",
   "main": "./build/bindings.js",
   "types": "./build/bindings.d.ts",
