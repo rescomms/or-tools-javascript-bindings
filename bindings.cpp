@@ -23,6 +23,12 @@ LinearExpr weightedSumBoolVars(const std::vector<BoolVar>& vars, const std::vect
     return LinearExpr::WeightedSum(vars, coeffs);
 }
 
+// WithName takes an absl::string_view (== std::string_view under C++17), which embind
+// cannot marshal. Accept a std::string and let it convert implicitly.
+BoolVar boolVarWithName(BoolVar& self, const std::string& name) {
+    return self.WithName(name);
+}
+
 LinearExpr newLinearExprBoolVar(const BoolVar& var) {
     return LinearExpr(var);
 }
@@ -90,7 +96,7 @@ EMSCRIPTEN_DECLARE_VAL_TYPE(SolutionCallback);
 EMSCRIPTEN_DECLARE_VAL_TYPE(BoundCallback);
 
 // Creates a model that allows running a callback for each intermediate solution and best objective bound found. The callbacks must be syncronous
-Model* newIntermediateSolutionModel(const SolutionCallback& solutionCallback, const BoundCallback& boundCallback, bool enableLogging) {
+Model* newIntermediateSolutionModel(const SolutionCallback& solutionCallback, const BoundCallback& boundCallback, bool enableLogging, bool enableDomainTightening) {
     Model *model = new Model();
     if (!model) {
         throw "Model creation failed";
@@ -106,6 +112,7 @@ Model* newIntermediateSolutionModel(const SolutionCallback& solutionCallback, co
     auto runBoundCallbackInMainThread = mainThreadifyCallback<double>(boundCallback);
 
     SatParameters params;
+    params.set_fill_tightened_domains_in_response(enableDomainTightening);
     params.set_log_search_progress(enableLogging);
     model->Add(NewSatParameters(params));
     model->Add(NewFeasibleSolutionObserver(runSolutionCallbackInMainThread));
@@ -148,7 +155,9 @@ EMSCRIPTEN_BINDINGS(variables) {
         .constructor<int64_t, int64_t>();
     
     class_<BoolVar>("BoolVar")
-        .function("not", &BoolVar::Not);
+        .function("WithName", &boolVarWithName)
+        .function("not", &BoolVar::Not)
+        .function("Name", &BoolVar::Name);
     
     class_<IntVar>("IntVar");
 
@@ -171,6 +180,7 @@ EMSCRIPTEN_BINDINGS(model) {
         .constructor<>()
         .function("newBoolVar", &CpModelBuilder::NewBoolVar)
         .function("newIntVar", &CpModelBuilder::NewIntVar)
+        .function("addAssumption", &CpModelBuilder::AddAssumption)
         .function("addLessOrEqual", &CpModelBuilder::AddLessOrEqual)
         .function("addLessThan", &CpModelBuilder::AddLessThan)
         .function("addGreaterOrEqual", &CpModelBuilder::AddGreaterOrEqual)
@@ -182,6 +192,7 @@ EMSCRIPTEN_BINDINGS(model) {
         .function("addBoolOr", &addBoolOr, allow_raw_pointers())
         .function("addBoolVarHint", select_overload<void(BoolVar, bool)>(&CpModelBuilder::AddHint))
         .function("addIntVarHint", select_overload<void(IntVar, int64_t)>(&CpModelBuilder::AddHint))
+        .function("clearAssumptions", &CpModelBuilder::ClearAssumptions)
         .function("clearHints", &CpModelBuilder::ClearHints)
         .function("maximize", select_overload<void(const LinearExpr&)>(&CpModelBuilder::Maximize))
         .function("build", &CpModelBuilder::Build);
