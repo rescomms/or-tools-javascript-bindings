@@ -2,6 +2,7 @@
 interface WasmModule {
 }
 
+type EmbindString = ArrayBuffer|Uint8Array|Uint8ClampedArray|Int8Array|string;
 export interface ClassHandle {
   isAliasOf(other: ClassHandle): boolean;
   delete(): void;
@@ -39,7 +40,9 @@ export interface Domain extends ClassHandle {
 }
 
 export interface BoolVar extends ClassHandle {
+  WithName(_0: EmbindString): BoolVar;
   not(): BoolVar;
+  Name(): string;
 }
 
 export interface IntVar extends ClassHandle {
@@ -61,6 +64,7 @@ export interface CpModelProto extends ClassHandle {
 export interface CpModelBuilder extends ClassHandle {
   newBoolVar(): BoolVar;
   newIntVar(_0: Domain): IntVar;
+  addAssumption(_0: BoolVar): void;
   addLessOrEqual(_0: LinearExpr, _1: LinearExpr): Constraint;
   addLessThan(_0: LinearExpr, _1: LinearExpr): Constraint;
   addGreaterOrEqual(_0: LinearExpr, _1: LinearExpr): Constraint;
@@ -72,6 +76,7 @@ export interface CpModelBuilder extends ClassHandle {
   addBoolOr(_0: BoolVarVector): Constraint;
   addBoolVarHint(_0: BoolVar, _1: boolean): void;
   addIntVarHint(_0: IntVar, _1: bigint): void;
+  clearAssumptions(): void;
   clearHints(): void;
   maximize(_0: LinearExpr): void;
   build(): CpModelProto;
@@ -116,7 +121,7 @@ interface EmbindModule {
   CpSolverStatus: {UNKNOWN: CpSolverStatusValue<0>, MODEL_INVALID: CpSolverStatusValue<1>, FEASIBLE: CpSolverStatusValue<2>, INFEASIBLE: CpSolverStatusValue<3>, OPTIMAL: CpSolverStatusValue<4>};
   CpSolverResponse: {};
   Model: {
-    new(_0: (response: CpSolverResponse) => void, _1: (bound: number) => void, _2: boolean): Model;
+    new(_0: (response: CpSolverResponse) => void, _1: (bound: number) => void, _2: boolean, _3: boolean, _4: boolean): Model;
   };
   solve(_0: CpModelProto): CpSolverResponse;
   solveWithModel(_0: CpModelProto, _1: Model | null): CpSolverResponse;
