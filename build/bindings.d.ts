@@ -90,6 +90,7 @@ export type CpSolverStatus = CpSolverStatusValue<0>|CpSolverStatusValue<1>|CpSol
 export interface CpSolverResponse extends ClassHandle {
   status(): CpSolverStatus;
   objectiveValue(): number;
+  wallTime(): number;
 }
 
 export interface Model extends ClassHandle {
@@ -125,6 +126,7 @@ interface EmbindModule {
   };
   solve(_0: CpModelProto): CpSolverResponse;
   solveWithModel(_0: CpModelProto, _1: Model | null): CpSolverResponse;
+  stopSearch(_0: Model | null): void;
   solutionIntegerValueBoolVar(_0: CpSolverResponse, _1: BoolVar): bigint;
   solutionIntegerValueIntVar(_0: CpSolverResponse, _1: IntVar): bigint;
   solutionIntegerValueLinearExpr(_0: CpSolverResponse, _1: LinearExpr): bigint;

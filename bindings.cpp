@@ -212,7 +212,8 @@ EMSCRIPTEN_BINDINGS(model) {
 
     class_<CpSolverResponse>("CpSolverResponse")
         .function("status", &CpSolverResponse::status)
-        .function("objectiveValue", &CpSolverResponse::objective_value);
+        .function("objectiveValue", &CpSolverResponse::objective_value)
+        .function("wallTime", &CpSolverResponse::wall_time);
     
     class_<Model>("Model")
         .constructor(&newIntermediateSolutionModel, return_value_policy::take_ownership());
@@ -223,7 +224,7 @@ EMSCRIPTEN_BINDINGS(model) {
 
     function("solve", &Solve);
     function("solveWithModel", &solveWithModel, allow_raw_pointers());
-    function("stopSearch", &stopSearch);
+    function("stopSearch", &StopSearch, allow_raw_pointers());
     function("solutionIntegerValueBoolVar", &solutionIntegerValueBoolVar);
     function("solutionIntegerValueIntVar", &solutionIntegerValueIntVar);
     function("solutionIntegerValueLinearExpr", &solutionIntegerValueLinearExpr);

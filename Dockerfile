@@ -31,7 +31,7 @@ WORKDIR ..
 ################################################################################
 # Build OR-Tools
 FROM emscripten AS build-ortools
-RUN git clone --depth 1 --branch v9.12 https://github.com/google/or-tools.git
+RUN git clone --depth 1 --branch v9.13 https://github.com/google/or-tools.git
 WORKDIR or-tools
 RUN source ../emsdk/emsdk_env.sh && \
 emcmake cmake -S. -Bbuild -DBUILD_DEPS:BOOL=ON -DBUILD_TESTING=OFF \
