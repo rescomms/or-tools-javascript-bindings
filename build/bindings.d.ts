@@ -121,7 +121,7 @@ interface EmbindModule {
   CpSolverStatus: {UNKNOWN: CpSolverStatusValue<0>, MODEL_INVALID: CpSolverStatusValue<1>, FEASIBLE: CpSolverStatusValue<2>, INFEASIBLE: CpSolverStatusValue<3>, OPTIMAL: CpSolverStatusValue<4>};
   CpSolverResponse: {};
   Model: {
-    new(_0: (response: CpSolverResponse) => void, _1: (bound: number) => void, _2: boolean, _3: boolean): Model;
+    new(_0: (response: CpSolverResponse) => void, _1: (bound: number) => void, _2: { enableLogging: boolean, enableDomainTightening: boolean, maxTime?: number }): Model;
   };
   solve(_0: CpModelProto): CpSolverResponse;
   solveWithModel(_0: CpModelProto, _1: Model | null): CpSolverResponse;

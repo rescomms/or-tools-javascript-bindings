@@ -5,11 +5,13 @@
 #include <emscripten/threading.h>
 #include <emscripten/proxying.h>
 #include "ortools/sat/cp_model.h"
+#include "ortools/sat/cp_model_solver.h"
 #include <stdio.h>
 #include <malloc.h>
 #include <vector>
 #include <future>
 #include <utility>
+#include <optional>
 
 using namespace emscripten;
 using namespace operations_research;
@@ -94,9 +96,10 @@ auto mainThreadifyCallback(const val& callback) {
 
 EMSCRIPTEN_DECLARE_VAL_TYPE(SolutionCallback);
 EMSCRIPTEN_DECLARE_VAL_TYPE(BoundCallback);
+EMSCRIPTEN_DECLARE_VAL_TYPE(SolutionModelParameters);
 
 // Creates a model that allows running a callback for each intermediate solution and best objective bound found. The callbacks must be syncronous
-Model* newIntermediateSolutionModel(const SolutionCallback& solutionCallback, const BoundCallback& boundCallback, bool enableLogging, bool enableDomainTightening) {
+Model* newIntermediateSolutionModel(const SolutionCallback& solutionCallback, const BoundCallback& boundCallback, const SolutionModelParameters& options) {
     Model *model = new Model();
     if (!model) {
         throw "Model creation failed";
@@ -112,8 +115,11 @@ Model* newIntermediateSolutionModel(const SolutionCallback& solutionCallback, co
     auto runBoundCallbackInMainThread = mainThreadifyCallback<double>(boundCallback);
 
     SatParameters params;
-    params.set_fill_tightened_domains_in_response(enableDomainTightening);
-    params.set_log_search_progress(enableLogging);
+    if (options.hasOwnProperty("maxTime")) {
+        params.set_max_time_in_seconds(options["maxTime"].as<int>());
+    }
+    params.set_fill_tightened_domains_in_response(options["enableDomainTightening"].as<bool>());
+    params.set_log_search_progress(options["enableLogging"].as<bool>());
     model->Add(NewSatParameters(params));
     model->Add(NewFeasibleSolutionObserver(runSolutionCallbackInMainThread));
     model->Add(NewBestBoundCallback(runBoundCallbackInMainThread));
@@ -213,9 +219,11 @@ EMSCRIPTEN_BINDINGS(model) {
 
     register_type<SolutionCallback>("(response: CpSolverResponse) => void");
     register_type<BoundCallback>("(bound: number) => void");
+    register_type<SolutionModelParameters>("{ enableLogging: boolean, enableDomainTightening: boolean, maxTime?: number }");
 
     function("solve", &Solve);
     function("solveWithModel", &solveWithModel, allow_raw_pointers());
+    function("stopSearch", &stopSearch);
     function("solutionIntegerValueBoolVar", &solutionIntegerValueBoolVar);
     function("solutionIntegerValueIntVar", &solutionIntegerValueIntVar);
     function("solutionIntegerValueLinearExpr", &solutionIntegerValueLinearExpr);
