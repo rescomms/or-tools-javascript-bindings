@@ -63,6 +63,14 @@ int64_t solutionIntegerValueLinearExpr(const CpSolverResponse& response, const L
     return SolutionIntegerValue(response, expr);
 }
 
+Constraint addAutomaton(CpModelBuilder* builder, const std::vector<IntVar>& vars, const int initial_state, const std::vector<int>& final_states, const std::vector<std::tuple<int, int, int64_t>>& transitions) {
+  AutomatonConstraint automaton = builder->AddAutomaton(vars, initial_state, final_states);
+  for (const auto& transition : transitions) {
+    automaton.AddTransition(std::get<0>(transition), std::get<1>(transition), std::get<2>(transition));
+  }
+  return automaton;
+}
+
 Constraint addAllDifferent(CpModelBuilder* builder, const std::vector<IntVar>& vars) {
     return builder->AddAllDifferent(vars);
 }
@@ -196,6 +204,8 @@ EMSCRIPTEN_BINDINGS(std) {
     register_vector<BoolVar>("BoolVarVector");
     register_vector<IntVar>("IntVarVector");
     register_vector<int64_t>("Int64Vector");
+    register_vector<int>("IntVector");
+    register_vector<std::tuple<int, int, int64_t>>("TransitionTupleVector");
 }
 
 EMSCRIPTEN_BINDINGS(variables) {
@@ -229,6 +239,7 @@ EMSCRIPTEN_BINDINGS(model) {
         .function("newBoolVar", &CpModelBuilder::NewBoolVar)
         .function("newIntVar", &CpModelBuilder::NewIntVar)
         .function("addAssumption", &CpModelBuilder::AddAssumption)
+        .function("addAutomaton", &addAutomaton, allow_raw_pointers())
         .function("addLessOrEqual", &CpModelBuilder::AddLessOrEqual)
         .function("addLessThan", &CpModelBuilder::AddLessThan)
         .function("addGreaterOrEqual", &CpModelBuilder::AddGreaterOrEqual)
@@ -244,6 +255,9 @@ EMSCRIPTEN_BINDINGS(model) {
         .function("clearHints", &CpModelBuilder::ClearHints)
         .function("maximize", select_overload<void(const LinearExpr&)>(&CpModelBuilder::Maximize))
         .function("build", &CpModelBuilder::Build);
+
+    class_<std::tuple<int, int, int64_t>>("TransitionTuple")
+        .constructor<int, int, int64_t>();
 
     enum_<CpSolverStatus>("CpSolverStatus")
         .value("UNKNOWN", CpSolverStatus::UNKNOWN)
