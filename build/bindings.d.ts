@@ -36,6 +36,22 @@ export interface Int64Vector extends ClassHandle, Iterable<bigint> {
   set(_0: number, _1: bigint): boolean;
 }
 
+export interface IntVector extends ClassHandle, Iterable<number> {
+  push_back(_0: number): void;
+  resize(_0: number, _1: number): void;
+  size(): number;
+  get(_0: number): number | undefined;
+  set(_0: number, _1: number): boolean;
+}
+
+export interface TransitionTupleVector extends ClassHandle, Iterable<TransitionTuple> {
+  size(): number;
+  get(_0: number): TransitionTuple | undefined;
+  push_back(_0: TransitionTuple): void;
+  resize(_0: number, _1: TransitionTuple): void;
+  set(_0: number, _1: TransitionTuple): boolean;
+}
+
 export interface Domain extends ClassHandle {
 }
 
@@ -65,6 +81,7 @@ export interface CpModelBuilder extends ClassHandle {
   newBoolVar(): BoolVar;
   newIntVar(_0: Domain): IntVar;
   addAssumption(_0: BoolVar): void;
+  addAutomaton(_0: IntVarVector, _1: number, _2: IntVector, _3: TransitionTupleVector): Constraint;
   addLessOrEqual(_0: LinearExpr, _1: LinearExpr): Constraint;
   addLessThan(_0: LinearExpr, _1: LinearExpr): Constraint;
   addGreaterOrEqual(_0: LinearExpr, _1: LinearExpr): Constraint;
@@ -80,6 +97,9 @@ export interface CpModelBuilder extends ClassHandle {
   clearHints(): void;
   maximize(_0: LinearExpr): void;
   build(): CpModelProto;
+}
+
+export interface TransitionTuple extends ClassHandle {
 }
 
 export interface CpSolverStatusValue<T extends number> {
@@ -106,6 +126,12 @@ interface EmbindModule {
   Int64Vector: {
     new(): Int64Vector;
   };
+  IntVector: {
+    new(): IntVector;
+  };
+  TransitionTupleVector: {
+    new(): TransitionTupleVector;
+  };
   Domain: {
     new(_0: bigint, _1: bigint): Domain;
   };
@@ -118,6 +144,9 @@ interface EmbindModule {
   CpModelProto: {};
   CpModelBuilder: {
     new(): CpModelBuilder;
+  };
+  TransitionTuple: {
+    new(_0: number, _1: number, _2: bigint): TransitionTuple;
   };
   CpSolverStatus: {UNKNOWN: CpSolverStatusValue<0>, MODEL_INVALID: CpSolverStatusValue<1>, FEASIBLE: CpSolverStatusValue<2>, INFEASIBLE: CpSolverStatusValue<3>, OPTIMAL: CpSolverStatusValue<4>};
   CpSolverResponse: {};
