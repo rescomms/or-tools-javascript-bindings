@@ -124,8 +124,8 @@ interface EmbindModule {
   Model: {
     new(_0: (response: CpSolverResponse) => void, _1: (bound: number) => void, _2: { enableLogging: boolean, enableDomainTightening: boolean, maxTime?: number }): Model;
   };
-  solve(_0: CpModelProto): CpSolverResponse;
-  solveWithModel(_0: CpModelProto, _1: Model | null): CpSolverResponse;
+  solve(_0: CpModelProto): Promise<CpSolverResponse>;
+  solveWithModel(_0: CpModelProto, _1: Model | null): Promise<CpSolverResponse>;
   stopSearch(_0: Model | null): void;
   solutionIntegerValueBoolVar(_0: CpSolverResponse, _1: BoolVar): bigint;
   solutionIntegerValueIntVar(_0: CpSolverResponse, _1: IntVar): bigint;

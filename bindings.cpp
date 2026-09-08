@@ -4,6 +4,7 @@
 #include <emscripten/bind.h>
 #include <emscripten/threading.h>
 #include <emscripten/proxying.h>
+#include <emscripten/eventloop.h>
 #include "ortools/sat/cp_model.h"
 #include "ortools/sat/cp_model_solver.h"
 #include <stdio.h>
@@ -97,6 +98,7 @@ auto mainThreadifyCallback(const val& callback) {
 EMSCRIPTEN_DECLARE_VAL_TYPE(SolutionCallback);
 EMSCRIPTEN_DECLARE_VAL_TYPE(BoundCallback);
 EMSCRIPTEN_DECLARE_VAL_TYPE(SolutionModelParameters);
+EMSCRIPTEN_DECLARE_VAL_TYPE(CpSolverResponsePromise);
 
 // Creates a model that allows running a callback for each intermediate solution and best objective bound found. The callbacks must be syncronous
 Model* newIntermediateSolutionModel(const SolutionCallback& solutionCallback, const BoundCallback& boundCallback, const SolutionModelParameters& options) {
@@ -126,14 +128,54 @@ Model* newIntermediateSolutionModel(const SolutionCallback& solutionCallback, co
     return model;
 }
 
-CpSolverResponse solveWithModel(const CpModelProto& model_proto, Model* model) {
-    // Run the solver in a new thread so that the main thread is free to execute callbacks
-    std::future<CpSolverResponse> f = std::async(std::launch::async, &SolveCpModel, model_proto, model);
-    // Keep executing callbacks until the solver has finished
-    do {
-        queue.execute();
-    } while(f.wait_for(std::chrono::milliseconds(200)) != std::future_status::ready);
-    return f.get();
+// Creates a JS Promise together with its resolve/reject callbacks, returned as { promise, resolve, reject }.
+EM_JS(EM_VAL, createDeferred, (), {
+    let resolve, reject;
+    const promise = new Promise((res, rej) => { resolve = res; reject = rej; });
+    return Emval.toHandle({ promise, resolve, reject });
+});
+
+struct SolveSession {
+    std::future<CpSolverResponse> future;
+    val resolve;
+    val reject;
+};
+
+// Runs periodically on the main thread to execute
+// queued callbacks and check if the solver future is ready.
+// Also resolves or rejects the JS promise when the future is ready.
+static void pollSolveSession(void* arg) {
+    auto* session = static_cast<SolveSession*>(arg);
+    queue.execute();
+    if (session->future.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
+        try {
+            session->resolve(val(session->future.get()));
+        } catch (...) {
+            session->reject(val(std::string("Solve failed")));
+        }
+        delete session;
+        return;
+    }
+    emscripten_set_timeout(&pollSolveSession, 100, session); // Poll every 100ms, main thread is free between polls
+}
+
+// Wraps a solver future running on another pthread into a JS Promise<CpSolverResponse>.
+// Starts polling on the main thread using pollSolveSession
+static CpSolverResponsePromise startSession(std::future<CpSolverResponse>&& future) {
+    auto* session = new SolveSession{std::move(future), val::undefined(), val::undefined()};
+    val deferred = val::take_ownership(createDeferred());
+    session->resolve = deferred["resolve"];
+    session->reject = deferred["reject"];
+    emscripten_set_timeout(&pollSolveSession, 0, session);
+    return CpSolverResponsePromise(deferred["promise"]);
+}
+
+CpSolverResponsePromise solveAsync(const CpModelProto& model_proto) {
+    return startSession(std::async(std::launch::async, &Solve, model_proto));
+}
+
+CpSolverResponsePromise solveWithModelAsync(const CpModelProto& model_proto, Model* model) {
+    return startSession(std::async(std::launch::async, &SolveCpModel, model_proto, model));
 }
 
 size_t getTotalMemory() {
@@ -221,9 +263,10 @@ EMSCRIPTEN_BINDINGS(model) {
     register_type<SolutionCallback>("(response: CpSolverResponse) => void");
     register_type<BoundCallback>("(bound: number) => void");
     register_type<SolutionModelParameters>("{ enableLogging: boolean, enableDomainTightening: boolean, maxTime?: number }");
+    register_type<CpSolverResponsePromise>("Promise<CpSolverResponse>");
 
-    function("solve", &Solve);
-    function("solveWithModel", &solveWithModel, allow_raw_pointers());
+    function("solve", &solveAsync);
+    function("solveWithModel", &solveWithModelAsync, allow_raw_pointers());
     function("stopSearch", &StopSearch, allow_raw_pointers());
     function("solutionIntegerValueBoolVar", &solutionIntegerValueBoolVar);
     function("solutionIntegerValueIntVar", &solutionIntegerValueIntVar);
