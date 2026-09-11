@@ -51,6 +51,13 @@ LinearExpr immutableAdd(const LinearExpr& first, const LinearExpr& second) {
     return result;
 }
 
+LinearExpr immutableSubtract(const LinearExpr& first, const LinearExpr& second) {
+    LinearExpr result;
+    result += first;
+    result -= second;
+    return result;
+}
+
 int64_t solutionIntegerValueBoolVar(const CpSolverResponse& response, const BoolVar& var) {
     return SolutionIntegerValue(response, var);
 }
@@ -216,7 +223,9 @@ EMSCRIPTEN_BINDINGS(variables) {
 EMSCRIPTEN_BINDINGS(model) {
     class_<LinearExpr>("LinearExpr")
         .function("mutableAdd", &LinearExpr::operator+=)
-        .function("immutableAdd", &immutableAdd);
+        .function("immutableAdd", &immutableAdd)
+        .function("mutableSubtract", &LinearExpr::operator-=)
+        .function("immutableSubtract", &immutableSubtract);
     
     class_<Constraint>("Constraint")
         .function("onlyEnforceIf", select_overload<Constraint(BoolVar)>(&Constraint::OnlyEnforceIf))
