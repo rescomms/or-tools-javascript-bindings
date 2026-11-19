@@ -125,7 +125,10 @@ Model* newIntermediateSolutionModel(const SolutionCallback& solutionCallback, co
 
     SatParameters params;
     if (options.hasOwnProperty("maxTime")) {
-        params.set_max_time_in_seconds(options["maxTime"].as<int>());
+        params.set_max_time_in_seconds(options["maxTime"].as<double>());
+    }
+    if (options.hasOwnProperty("threads")) {
+        params.set_num_workers(options["threads"].as<int>());
     }
     params.set_fill_tightened_domains_in_response(options["enableDomainTightening"].as<bool>());
     params.set_log_search_progress(options["enableLogging"].as<bool>());
@@ -271,7 +274,7 @@ EMSCRIPTEN_BINDINGS(model) {
 
     register_type<SolutionCallback>("(response: CpSolverResponse) => void");
     register_type<BoundCallback>("(bound: number) => void");
-    register_type<SolutionModelParameters>("{ enableLogging: boolean, enableDomainTightening: boolean, maxTime?: number }");
+    register_type<SolutionModelParameters>("{ enableLogging: boolean, enableDomainTightening: boolean, maxTime?: number, threads?: number }");
     register_type<CpSolverResponsePromise>("Promise<CpSolverResponse>");
 
     function("solve", &solveAsync);
