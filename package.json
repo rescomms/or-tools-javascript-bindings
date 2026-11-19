@@ -1,6 +1,6 @@
 {
   "name": "@rescomms/or-tools-wasm",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "description": "WASM bindings for Google OR-Tools built with Emscripten",
   "keywords": [
     "or-tools",
