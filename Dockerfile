@@ -34,12 +34,14 @@ WORKDIR /wrkdir
 ################################################################################
 # Build OR-Tools
 FROM emscripten AS build-ortools
-RUN git clone --depth 1 --branch v9.13 https://github.com/google/or-tools.git
+RUN git clone --depth 1 --branch v9.15 https://github.com/google/or-tools.git
 WORKDIR /wrkdir/or-tools
 # To use static libs, patch the or-tools CMakeLists.txt files to have BUILD_SHARED_LIBS=OFF
 # This needs to be done even though we supply -DBUILD_SHARED_LIBS=OFF from the command line
 RUN grep -rn "BUILD_SHARED_LIBS" CMakeLists.txt cmake/ && \
     find CMakeLists.txt cmake/ -type f -exec sed -i '/BUILD_SHARED_LIBS/s/ON/OFF/g' {} +
+# Patch this flag to avoid compilation error on OR-Tools v9.15
+RUN sed -i 's/ORTOOLS_TARGET_OS_SUPPORTS_THREADS 0/ORTOOLS_TARGET_OS_SUPPORTS_THREADS 1/' ortools/port/os.h
 RUN source ../emsdk/emsdk_env.sh && \
     emcmake cmake -S. -Bbuild \
     -DBUILD_DEPS:BOOL=ON \
@@ -47,6 +49,7 @@ RUN source ../emsdk/emsdk_env.sh && \
     -DBUILD_SHARED_LIBS=OFF \
     -DBUILD_FLATZINC:BOOL=OFF \
     -DBUILD_EXAMPLES:BOOL=OFF \
+    -DBUILD_SAMPLES=OFF \
     -DUSE_COINOR:BOOL=OFF \
     -DUSE_HIGHS:BOOL=OFF \
     -DUSE_SCIP:BOOL=OFF \
