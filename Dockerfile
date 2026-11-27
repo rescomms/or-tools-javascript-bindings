@@ -22,40 +22,50 @@ RUN apt-get update && \
 # Install emscripten
 FROM base AS emscripten
 WORKDIR /wrkdir
-RUN git clone --depth 1 --branch 5.0.3 https://github.com/emscripten-core/emsdk.git
-WORKDIR emsdk
+RUN git clone --depth 1 --branch 7.0.1 https://github.com/emscripten-core/emsdk.git
+WORKDIR /wrkdir/emsdk
 RUN ./emsdk install latest
 RUN ./emsdk activate latest
-WORKDIR ..
+# We want to use static libs, and bzip2 is the only dependency or-tools doesn't build from source
+# Use one supplied by emscripten and build it here
+RUN source ./emsdk_env.sh && embuilder build bzip2
+WORKDIR /wrkdir
 
 ################################################################################
 # Build OR-Tools
 FROM emscripten AS build-ortools
 RUN git clone --depth 1 --branch v9.13 https://github.com/google/or-tools.git
-WORKDIR or-tools
+WORKDIR /wrkdir/or-tools
+# To use static libs, patch the or-tools CMakeLists.txt files to have BUILD_SHARED_LIBS=OFF
+# This needs to be done even though we supply -DBUILD_SHARED_LIBS=OFF from the command line
+RUN grep -rn "BUILD_SHARED_LIBS" CMakeLists.txt cmake/ && \
+    find CMakeLists.txt cmake/ -type f -exec sed -i '/BUILD_SHARED_LIBS/s/ON/OFF/g' {} +
 RUN source ../emsdk/emsdk_env.sh && \
-emcmake cmake -S. -Bbuild -DBUILD_DEPS:BOOL=ON -DBUILD_TESTING=OFF \
--DBUILD_FLATZINC:BOOL=OFF \
--DBUILD_EXAMPLES:BOOL=OFF -DUSE_COINOR:BOOL=OFF -DUSE_HIGHS:BOOL=OFF \
--DUSE_SCIP:BOOL=OFF -DCMAKE_C_FLAGS="-pthread" -DCMAKE_CXX_FLAGS="-pthread"
-RUN cmake --build build
-
-################################################################################
-# Install built OR-Tools
-FROM build-ortools AS install-ortools
-RUN cmake --build build --config Release --target install -v
-WORKDIR ..
+    emcmake cmake -S. -Bbuild \
+    -DBUILD_DEPS:BOOL=ON \
+    -DBUILD_TESTING=OFF \
+    -DBUILD_SHARED_LIBS=OFF \
+    -DBUILD_FLATZINC:BOOL=OFF \
+    -DBUILD_EXAMPLES:BOOL=OFF \
+    -DUSE_COINOR:BOOL=OFF \
+    -DUSE_HIGHS:BOOL=OFF \
+    -DUSE_SCIP:BOOL=OFF \
+    -DCMAKE_C_FLAGS="-pthread" \
+    -DCMAKE_CXX_FLAGS="-pthread"
+RUN source ../emsdk/emsdk_env.sh && \
+    cmake --build build --config Release --target install
 
 ################################################################################
 # Build bindings
-FROM install-ortools AS bindings
+FROM build-ortools AS bindings
+WORKDIR /wrkdir
 RUN source ./emsdk/emsdk_env.sh && \
-npm install -g typescript
+    npm install -g typescript
 COPY . .
 RUN source ./emsdk/emsdk_env.sh && \
-emcmake cmake -S . -B build
+    emcmake cmake -S . -B build
 RUN source ./emsdk/emsdk_env.sh && \
-cmake --build build
+    cmake --build build
 
 ################################################################################
 # Copy built bindings to host
