@@ -56,7 +56,7 @@ RUN source ../emsdk/emsdk_env.sh && \
     -DCMAKE_C_FLAGS="-pthread" \
     -DCMAKE_CXX_FLAGS="-pthread"
 RUN source ../emsdk/emsdk_env.sh && \
-    cmake --build build --config Release --target install
+    cmake --build build --config Release --target install -j $(nproc)
 
 ################################################################################
 # Build bindings
